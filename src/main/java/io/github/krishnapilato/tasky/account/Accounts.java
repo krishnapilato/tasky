@@ -43,15 +43,18 @@ public final class Accounts {
         }
     }
 
-    public record RecoveryKey(String recoveryKey) {}
+    public record RecoveryKey(String recoveryKey) {
+    }
 
     private static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
 
-    private Accounts() {}
+    private Accounts() {
+    }
 
     public static User register(Registration registration) {
         return Database.call(database -> {
-            if (find(database, registration.email()).isPresent()) throw new Problem(409, "An account with this email already exists");
+            if (find(database, registration.email()).isPresent())
+                throw new Problem(409, "An account with this email already exists");
             var user = new User(registration.name(), registration.email(), registration.password());
             database.persist(user);
             return user;
@@ -126,7 +129,8 @@ public final class Accounts {
     }
 
     private static void strong(String password) {
-        if (password == null || password.length() < 8) throw new Problem(422, "Use at least 8 characters for the password");
+        if (password == null || password.length() < 8)
+            throw new Problem(422, "Use at least 8 characters for the password");
         if (password.length() > 128) throw new Problem(422, "Keep the password under 128 characters");
     }
 }

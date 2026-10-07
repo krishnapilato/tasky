@@ -1,17 +1,13 @@
 package io.github.krishnapilato.tasky.focus;
 
 import module java.base;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "focus_sessions", indexes = @Index(columnList = "owner_id"))
 public class FocusSession {
-    public record View(Long taskId, int minutes, Instant endedAt) {}
+    public record View(Long taskId, int minutes, Instant endedAt) {
+    }
 
     @Id
     @GeneratedValue

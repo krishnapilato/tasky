@@ -1,14 +1,7 @@
 package io.github.krishnapilato.tasky.task;
 
 import module java.base;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -57,7 +50,8 @@ public class Task {
 
     private Instant completedAt;
 
-    protected Task() {}
+    protected Task() {
+    }
 
     public Task(long ownerId, TaskDraft draft, Instant createdAt) {
         this.ownerId = ownerId;
@@ -77,7 +71,7 @@ public class Task {
         return new TaskView(id, title, notes, status, priority, due, repeat, tags, subtasks, focusMinutes, createdAt, completedAt);
     }
 
-    public final void edit(TaskDraft draft) {
+    public void edit(TaskDraft draft) {
         title = draft.title();
         notes = draft.notes();
         priority = draft.priority();

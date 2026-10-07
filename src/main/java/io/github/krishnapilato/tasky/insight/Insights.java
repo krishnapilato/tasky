@@ -10,14 +10,12 @@ import io.github.krishnapilato.tasky.task.Tasks;
 import java.util.concurrent.StructuredTaskScope.Joiner;
 
 public final class Insights {
-    public enum Momentum {
-        RISING, STEADY, SLOWING
-    }
+
+    public enum Momentum {RISING, STEADY, SLOWING}
 
     public record Day(LocalDate date, int done, int focusMinutes) {}
 
-    public record Summary(int streak, int bestStreak, int doneThisWeek, int doneLastWeek, Momentum momentum,
-                          int focusMinutesThisWeek, OptionalDouble onTimePercent, List<Day> activity) {}
+    public record Summary(int streak, int bestStreak, int doneThisWeek, int doneLastWeek, Momentum momentum, int focusMinutesThisWeek, OptionalDouble onTimePercent, List<Day> activity) {}
 
     private static final int DAYS = 16 * 7;
 
@@ -30,7 +28,7 @@ public final class Insights {
             var focus = scope.fork(FocusLog::history);
             scope.join();
             return summarize(tasks.get(), focus.get(), session);
-        } catch (InterruptedException interrupted) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new Problem(503, "Insights were interrupted, try again");
         }

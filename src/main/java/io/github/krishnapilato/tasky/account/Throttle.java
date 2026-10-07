@@ -15,7 +15,8 @@ final class Throttle {
     private static final Duration WINDOW = Duration.ofMinutes(10);
     private static final Map<String, Strikes> STRIKES = new ConcurrentHashMap<>();
 
-    private Throttle() {}
+    private Throttle() {
+    }
 
     static <T> T attempt(String key, Supplier<T> work) {
         var strikes = STRIKES.computeIfPresent(key, (_, known) -> known.expired() ? null : known);

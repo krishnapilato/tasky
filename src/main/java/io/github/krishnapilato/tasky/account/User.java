@@ -1,16 +1,13 @@
 package io.github.krishnapilato.tasky.account;
 
 import module java.base;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users")
 public class User {
-    public record View(long id, String name, String email, Instant createdAt) {}
+
+    public record View(long id, String name, String email, Instant createdAt) { }
 
     @Id
     @GeneratedValue
@@ -32,7 +29,8 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected User() {}
+    protected User() {
+    }
 
     public User(String name, String email, String password) {
         this.name = name;

@@ -1,48 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="warn" monitorInterval="30">
-    <!-- Properties for centralized configuration -->
-    <Properties>
-        <Property name="logDir">C:/tmp</Property>
-        <Property name="logFileName">simplewebapp</Property>
-    </Properties>
-
-    <!-- Appenders -->
+<Configuration status="warn">
     <Appenders>
-        <!-- Rolling File Appender -->
-        <RollingFile name="FileLogger"
-                     fileName="${logDir}/${logFileName}.log"
-                     filePattern="${logDir}/${logFileName}-%d{yyyy-MM-dd}.log">
-            <PatternLayout>
-                <Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%t] %-5level %logger{36} - %msg%n</Pattern>
-            </PatternLayout>
-            <Policies>
-                <!-- Rotate logs daily -->
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-                <!-- Limit file size -->
-                <SizeBasedTriggeringPolicy size="10MB"/>
-            </Policies>
-            <DefaultRolloverStrategy max="7"/> <!-- Keep logs for the last 7 days -->
-        </RollingFile>
-
-        <!-- Console Appender -->
-        <Console name="ConsoleLogger" target="SYSTEM_OUT">
-            <PatternLayout>
-                <Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%t] %-5level %logger{36} - %msg%n</Pattern>
-            </PatternLayout>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{1.} %msg%n"/>
         </Console>
     </Appenders>
-
-    <!-- Loggers -->
     <Loggers>
-        <!-- Root Logger -->
+        <Logger name="org.hibernate" level="warn"/>
+        <Logger name="org.apache" level="warn"/>
         <Root level="info">
-            <AppenderRef ref="FileLogger"/>
-            <AppenderRef ref="ConsoleLogger"/>
+            <AppenderRef ref="console"/>
         </Root>
-
-        <!-- Example of custom logger for a specific package -->
-        <Logger name="net.web" level="debug" additivity="false">
-            <AppenderRef ref="FileLogger"/>
-        </Logger>
     </Loggers>
 </Configuration>

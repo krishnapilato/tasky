@@ -1,0 +1,13 @@
+{
+    "name": "Tasky",
+    "short_name": "Tasky",
+    "description": "A calm, keyboard-first task manager.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#37352f",
+    "icons": [
+        { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    ]
+}

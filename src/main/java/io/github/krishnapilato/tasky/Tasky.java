@@ -11,7 +11,7 @@ public final class Tasky {
     @SuppressWarnings("resource")
     void main() throws Exception {
         Seed.read().plant();
-        var server = new Server(Integer.parseInt(System.getenv().getOrDefault("PORT", "8081")));
+        var server = new Server(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
         Runtime.getRuntime().addShutdownHook(Thread.ofPlatform().name("shutdown").unstarted(() -> {server.close();Database.close();}));
         LOG.info("Tasky is ready on http://localhost:{}", server.port());
         server.await();

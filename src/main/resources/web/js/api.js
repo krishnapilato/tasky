@@ -1,44 +1,27 @@
-import { demo, resetDemo } from './demo.js';
-
-const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+import {local} from './demo.js';
 
 const http = async (method, path, body) => {
     const response = await fetch(`api${path}`, {
         method,
-        keepalive: true,
-        headers: { 'Content-Type': 'application/json', 'X-Time-Zone': zone },
-        body: body === undefined ? undefined : JSON.stringify(body)
+        headers: {'Content-Type': 'application/json'},
+        body: body && JSON.stringify(body)
     });
-    if (response.status === 204) return null;
-    if (response.status === 401) dispatchEvent(new Event('tasky:unauthorized'));
-    const payload = await response.json();
-    if (!response.ok) throw Object.assign(new Error(payload.message), { status: response.status });
-    return payload;
+    const data = response.status === 204 ? null : await response.json();
+    if (!response.ok) throw Object.assign(new Error(data.message), {status: response.status});
+    return data;
 };
 
-export const about = await fetch('api/meta').then(response => response.json()).catch(() => ({ java: null }));
+export const {demo} = await fetch('api/account').then(response => response.json());
 
-export const live = about.java !== null;
-
-const request = live ? http : demo;
-
-export const seed = () => fetch('data/seed.json').then(response => response.json());
+const request = demo ? local : http;
 
 export const api = {
-    me: () => request('GET', '/auth/me'),
-    register: registration => request('POST', '/auth/register', registration),
-    login: credentials => request('POST', '/auth/login', credentials),
-    logout: () => request('POST', '/auth/logout'),
-    recover: recovery => request('POST', '/auth/recover', recovery),
-    rename: name => request('PUT', '/auth/me', { name }),
-    changePassword: change => request('POST', '/auth/password', change),
-    issueRecoveryKey: () => request('POST', '/auth/recovery-key'),
+    account: () => request('GET', '/account'),
+    register: form => request('POST', '/account/register', form),
+    login: form => request('POST', '/account/login', form),
+    logout: () => request('POST', '/account/logout'),
     tasks: () => request('GET', '/tasks'),
-    create: draft => request('POST', '/tasks', draft),
-    edit: (id, draft) => request('PUT', `/tasks/${id}`, draft),
-    move: (id, status) => request('POST', `/tasks/${id}/move`, { status }),
-    remove: id => request('DELETE', `/tasks/${id}`),
-    focus: entry => request('POST', '/focus', entry),
-    insights: () => request('GET', '/insights'),
-    reset: resetDemo
+    create: task => request('POST', '/tasks', task),
+    update: task => request('PUT', `/tasks/${task.id}`, task),
+    remove: id => request('DELETE', `/tasks/${id}`)
 };

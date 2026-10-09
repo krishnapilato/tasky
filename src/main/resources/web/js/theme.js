@@ -1,9 +1,4 @@
-const systemDark = matchMedia('(prefers-color-scheme: dark)');
+const saved = localStorage.getItem('tasky.theme');
+const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
 
-globalThis.applyTheme = (choice = localStorage.getItem('tasky.theme')) => {
-    const dark = choice === 'dark' || (choice !== 'light' && systemDark.matches);
-    document.documentElement.dataset.bsTheme = dark ? 'dark' : 'light';
-};
-
-systemDark.addEventListener('change', () => applyTheme());
-applyTheme();
+document.documentElement.dataset.bsTheme = dark ? 'dark' : 'light';

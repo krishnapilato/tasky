@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=build /build/target/tasky.jar tasky.jar
 USER 10001
 EXPOSE 8080
-ENTRYPOINT ["java", "--enable-preview", "-jar", "tasky.jar"]
+ENTRYPOINT ["java", "-jar", "tasky.jar"]

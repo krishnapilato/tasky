@@ -7,76 +7,45 @@
     <groupId>io.github.krishnapilato</groupId>
     <artifactId>tasky</artifactId>
     <version>2.0.0</version>
-    <packaging>jar</packaging>
 
     <name>Tasky</name>
-    <description>A calm, keyboard-first task manager on Java 27, embedded Tomcat, Hibernate and H2.</description>
-    <url>https://github.com/krishnapilato/tasky</url>
+    <description>A small task list on Java 27 with embedded Tomcat, Hibernate and H2.</description>
 
     <properties>
-        <java.version>27</java.version>
-        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <maven.compiler.release>27</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <main.class>io.github.krishnapilato.tasky.Tasky</main.class>
-
-        <tomcat.version>11.0.26</tomcat.version>
-        <hibernate.version>7.4.12.Final</hibernate.version>
-        <h2.version>2.5.252</h2.version>
-        <jackson.version>3.2.3</jackson.version>
-        <slf4j.version>2.0.20</slf4j.version>
-        <log4j.version>2.26.1</log4j.version>
-
-        <compiler.plugin.version>3.16.0</compiler.plugin.version>
-        <shade.plugin.version>3.6.2</shade.plugin.version>
-        <enforcer.plugin.version>3.6.3</enforcer.plugin.version>
-        <exec.plugin.version>3.6.4</exec.plugin.version>
-        <resources.plugin.version>3.5.0</resources.plugin.version>
-        <clean.plugin.version>3.5.0</clean.plugin.version>
-        <jar.plugin.version>3.5.1</jar.plugin.version>
-        <install.plugin.version>3.2.0</install.plugin.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>${tomcat.version}</version>
+            <version>11.0.26</version>
         </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
-            <version>${hibernate.version}</version>
+            <version>7.4.12.Final</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>${h2.version}</version>
+            <version>2.5.252</version>
         </dependency>
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
+            <version>3.2.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j2-impl</artifactId>
-            <version>${log4j.version}</version>
+            <version>2.26.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-jul</artifactId>
-            <version>${log4j.version}</version>
+            <version>2.26.1</version>
         </dependency>
     </dependencies>
 
@@ -85,63 +54,13 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>${enforcer.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>require-java-27</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireJavaVersion>
-                                    <version>[${java.version},)</version>
-                                </requireJavaVersion>
-                                <requireMavenVersion>
-                                    <version>[3.9,)</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>${clean.plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>${resources.plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${compiler.plugin.version}</version>
-                <configuration>
-                    <release>${java.version}</release>
-                    <enablePreview>true</enablePreview>
-                    <compilerArgs>
-                        <arg>-Xlint:all,-preview,-serial</arg>
-                    </compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>${jar.plugin.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-install-plugin</artifactId>
-                <version>${install.plugin.version}</version>
+                <version>3.16.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>${shade.plugin.version}</version>
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -165,58 +84,18 @@
                             </filters>
                             <transformers>
                                 <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/LICENSE</resource>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/LICENSE.md</resource>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/LICENSE.txt</resource>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/NOTICE</resource>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/NOTICE.md</resource>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/DEPENDENCIES</resource>
-                                </transformer>
-                                <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                        <Main-Class>${main.class}</Main-Class>
+                                        <Main-Class>io.github.krishnapilato.tasky.Tasky</Main-Class>
                                         <Multi-Release>true</Multi-Release>
-                                        <Implementation-Title>${project.name}</Implementation-Title>
-                                        <Implementation-Version>${project.version}</Implementation-Version>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>${exec.plugin.version}</version>
-                <configuration>
-                    <executable>java</executable>
-                    <arguments>
-                        <argument>--enable-preview</argument>
-                        <argument>-classpath</argument>
-                        <classpath/>
-                        <argument>${main.class}</argument>
-                    </arguments>
-                </configuration>
             </plugin>
         </plugins>
     </build>

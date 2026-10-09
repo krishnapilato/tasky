@@ -19,13 +19,3 @@ jobs:
           java-version: 27
           cache: maven
       - run: mvn --batch-mode --no-transfer-progress package
-      - uses: actions/upload-artifact@v7
-        with:
-          name: tasky
-          path: target/tasky.jar
-
-  image:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - run: docker build --tag tasky .

@@ -23,11 +23,10 @@ public record Seed(Account account, List<Entry> tasks) {
     public static void load() throws IOException {
         try (var file = Seed.class.getResourceAsStream("/web/data/seed.json")) {
             var seed = Json.MAPPER.readValue(file, Seed.class);
-            var today = LocalDate.now(ZoneId.of("Europe/Rome"));
             Database.run(database -> {
                 var user = new User(seed.account.name(), seed.account.email(), Passwords.hash(seed.account.password()));
                 database.persist(user);
-                for (var entry : seed.tasks) database.persist(new Task(user.id(), entry.on(today)));
+                for (var entry : seed.tasks) database.persist(new Task(user.id(), entry.on(LocalDate.now(ZoneId.of("Europe/Rome")))));
             });
         }
     }

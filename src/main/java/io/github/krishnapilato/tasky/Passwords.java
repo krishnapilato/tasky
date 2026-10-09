@@ -9,7 +9,6 @@ import java.util.Base64;
 
 public final class Passwords {
 
-    private static final int ITERATIONS = 600_000;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private Passwords() {}
@@ -27,7 +26,7 @@ public final class Passwords {
 
     private static byte[] derive(String password, byte[] salt) {
         try {
-            var spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, 256);
+            var spec = new PBEKeySpec(password.toCharArray(), salt, 600_000, 256);
             return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
         } catch (GeneralSecurityException unsupported) {
             throw new IllegalStateException(unsupported);

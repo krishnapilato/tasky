@@ -11,5 +11,5 @@ public final class Json {
             .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
             .build();
 
-    private Json() { }
+    private Json() {}
 }

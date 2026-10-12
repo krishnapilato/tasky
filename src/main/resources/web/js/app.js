@@ -35,8 +35,7 @@ const dueLabel = due => {
     return new Date(`${due}T00:00`).toLocaleDateString('en', {month: 'short', day: 'numeric'});
 };
 
-const byDueThenPriority = (a, b) =>
-    (a.due ?? '9999').localeCompare(b.due ?? '9999') || RANK[a.priority] - RANK[b.priority] || a.id - b.id;
+const byDueThenPriority = (a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999') || RANK[a.priority] - RANK[b.priority] || a.id - b.id;
 
 const row = task => {
     const item = $('#row').content.firstElementChild.cloneNode(true);
@@ -90,11 +89,7 @@ const report = error => {
 const on = (selector, type, handler) => $(selector).addEventListener(type, async event => {
     if (type === 'submit') event.preventDefault();
     $('#error').hidden = $('#auth-error').hidden = true;
-    try {
-        await handler(event);
-    } catch (error) {
-        report(error);
-    }
+    try { await handler(event); } catch (error) { report(error); }
 });
 
 const taskFrom = form => {

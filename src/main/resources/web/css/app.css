@@ -374,7 +374,7 @@ h1 {
     padding-top: 0;
 }
 
-@media (max-width: 575.98px) {
+@media (max-width: 576px) {
     .page {
         padding-top: 1.5rem;
     }

@@ -3,9 +3,7 @@ const KEY = 'tasky';
 let db;
 let opening;
 
-const fail = (status, message) => {
-    throw Object.assign(new Error(message), {status});
-};
+const fail = (status, message) => { throw Object.assign(new Error(message), {status}); }
 
 const text = value => (value ?? '').trim();
 

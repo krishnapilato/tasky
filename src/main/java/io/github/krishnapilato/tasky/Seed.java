@@ -1,6 +1,7 @@
 package io.github.krishnapilato.tasky;
 
 import io.github.krishnapilato.tasky.model.*;
+import org.apache.logging.log4j.LogManager;
 
 import java.io.IOException;
 import java.time.*;
@@ -25,5 +26,6 @@ record Seed(Account account, List<Entry> tasks) {
             db.persist(user);
             seed.tasks().forEach(t -> db.persist(new Task(user.id(), t.on(LocalDate.now(ZoneId.of("Europe/Rome"))))));
         });
+        LogManager.getLogger(Seed.class).info("Loaded the demo account {} with {} tasks into the in-memory database", seed.account().email(), seed.tasks().size());
     }
 }

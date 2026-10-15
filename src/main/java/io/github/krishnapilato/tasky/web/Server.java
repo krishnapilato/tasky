@@ -5,10 +5,11 @@ import org.apache.catalina.WebResourceRoot.ResourceSetType;
 import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.StandardRoot;
-import org.apache.logging.log4j.jul.Log4jBridgeHandler;
+import org.apache.logging.log4j.LogManager;
 import org.apache.tomcat.util.http.Rfc6265CookieProcessor;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 
 public final class Server {
@@ -16,7 +17,6 @@ public final class Server {
     private Server() {}
 
     public static void run(int port) throws IOException {
-        Log4jBridgeHandler.install(true, null, true);
         var tomcat = new Tomcat();
         tomcat.setBaseDir(Files.createTempDirectory("tasky").toString());
         tomcat.setPort(port);
@@ -42,7 +42,7 @@ public final class Server {
         } catch (LifecycleException failure) {
             throw new IllegalStateException("Could not start on port %d. Stop the program that is using it, or set PORT to a free port.".formatted(port), failure);
         }
-        IO.println("Tasky is running on http://localhost:" + port);
+        LogManager.getLogger(Server.class).info("Tasky is running on http://localhost:{} (started in {} ms)", port, ManagementFactory.getRuntimeMXBean().getUptime());
         tomcat.getServer().await();
     }
 }

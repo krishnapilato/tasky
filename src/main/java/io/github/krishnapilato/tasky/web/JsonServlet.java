@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import tools.jackson.core.JacksonException;
 
 import java.io.IOException;
@@ -15,17 +17,22 @@ import java.util.Optional;
 public abstract class JsonServlet extends HttpServlet {
 
     protected static final String USER_ID = "userId";
+    private static final Logger LOG = LogManager.getLogger(JsonServlet.class);
 
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        var started = System.nanoTime();
+        var outcome = "";
         try {
             super.service(request, response);
         } catch (Problem problem) {
+            outcome = " - " + problem.getMessage();
             send(response, problem.status(), Map.of("message", problem.getMessage()));
         } catch (RuntimeException failure) {
-            log("Request failed", failure);
+            LOG.error("{} {} failed", request.getMethod(), request.getRequestURI(), failure);
             send(response, 500, Map.of("message", "Something went wrong on the server"));
         }
+        LOG.info("{} {} {} in {} ms{}", request.getMethod(), request.getRequestURI(), response.getStatus(), (System.nanoTime() - started) / 1_000_000, outcome);
     }
 
     protected <T> T read(HttpServletRequest request, Class<T> type) throws IOException {

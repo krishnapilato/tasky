@@ -1,3 +1,5 @@
+import {Dialog} from 'https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js';
+import seed from '../data/seed.json' with {type: 'json'};
 import {api, demo} from './api.js';
 import {reset} from './demo.js';
 
@@ -15,6 +17,10 @@ const EMPTY = {
     done: 'Finished tasks will show up here.'
 };
 
+const relativeDay = new Intl.RelativeTimeFormat('en', {numeric: 'auto'});
+const shortDate = new Intl.DateTimeFormat('en', {month: 'short', day: 'numeric'});
+const longDate = new Intl.DateTimeFormat('en', {weekday: 'long', month: 'long', day: 'numeric'});
+
 let user = null;
 let tasks = [];
 let filter = 'open';
@@ -23,16 +29,15 @@ let editing = null;
 
 const $ = selector => document.querySelector(selector);
 
+const editor = Dialog.getOrCreateInstance($('#editor'));
+
 const today = () => new Date().toLocaleDateString('sv-SE');
 
 const isLate = task => FILTERS.today(task) && task.due < today();
 
 const dueLabel = due => {
-    const days = Math.round((new Date(due) - new Date(today())) / 86_400_000);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    if (days === -1) return 'Yesterday';
-    return new Date(`${due}T00:00`).toLocaleDateString('en', {month: 'short', day: 'numeric'});
+    const days = Math.round((Date.parse(due) - Date.parse(today())) / 86_400_000);
+    return Math.abs(days) > 1 ? shortDate.format(new Date(`${due}T00:00`)) : relativeDay.format(days, 'day');
 };
 
 const byDueThenPriority = (a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999') || RANK[a.priority] - RANK[b.priority] || a.id - b.id;
@@ -42,7 +47,7 @@ const row = task => {
     const due = item.querySelector('.task-due');
     item.dataset.id = task.id;
     item.classList.toggle('done', task.done);
-    item.querySelector('input').checked = task.done;
+    item.querySelector('.check').checked = task.done;
     item.querySelector('.task-title').textContent = task.title;
     item.querySelector('.task-notes').hidden = !task.notes;
     item.querySelector('.task-flag').classList.add(task.priority);
@@ -52,11 +57,10 @@ const row = task => {
 };
 
 const render = () => {
-    const shown = tasks.filter(FILTERS[filter]).sort(byDueThenPriority);
+    const shown = tasks.filter(FILTERS[filter]).toSorted(byDueThenPriority);
     const open = tasks.filter(FILTERS.open).length;
     const late = tasks.filter(isLate).length;
-    const date = new Date().toLocaleDateString('en', {weekday: 'long', month: 'long', day: 'numeric'});
-    $('#summary').textContent = `${date} · ${open} open${late ? `, ${late} overdue` : ''}`;
+    $('#summary').textContent = `${longDate.format(new Date())} · ${open} open${late ? `, ${late} overdue` : ''}`;
     $('#tasks').replaceChildren(...shown.map(row));
     $('#empty').textContent = EMPTY[filter];
     $('#empty').hidden = shown.length > 0;
@@ -89,7 +93,11 @@ const report = error => {
 const on = (selector, type, handler) => $(selector).addEventListener(type, async event => {
     if (type === 'submit') event.preventDefault();
     $('#error').hidden = $('#auth-error').hidden = true;
-    try { await handler(event); } catch (error) { report(error); }
+    try {
+        await handler(event);
+    } catch (error) {
+        report(error);
+    }
 });
 
 const taskFrom = form => {
@@ -105,8 +113,6 @@ const save = async task => {
     render();
 };
 
-const editor = () => bootstrap.Modal.getOrCreateInstance($('#editor'));
-
 on('#account', 'submit', async event => {
     const form = Object.fromEntries(new FormData(event.target));
     await show(await (registering ? api.register(form) : api.login(form)));
@@ -121,20 +127,11 @@ on('#switch', 'click', () => {
     $('#switch').textContent = registering ? 'I already have an account' : 'Create an account';
 });
 
-on('#try', 'click', async () => {
-    const {account} = await fetch('data/seed.json').then(response => response.json());
-    await show(await api.login(account));
-});
+on('#try', 'click', async () => show(await api.login(seed.account)));
 
 on('#logout', 'click', async () => {
     await api.logout();
     await show(null);
-});
-
-on('#theme', 'click', () => {
-    const next = document.documentElement.dataset.bsTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.bsTheme = next;
-    localStorage.setItem('tasky.theme', next);
 });
 
 on('#add', 'submit', async event => {
@@ -155,19 +152,19 @@ on('#tasks', 'click', event => {
     if (!event.target.closest('.task-title')) return;
     editing = taskOf(event.target);
     for (const field of ['title', 'notes', 'due', 'priority']) $('#edit').elements[field].value = editing[field] ?? '';
-    editor().show();
+    editor.show();
 });
 
 on('#edit', 'submit', async event => {
     await save({...editing, ...taskFrom(event.target)});
-    editor().hide();
+    await editor.hide();
 });
 
 on('#delete', 'click', async () => {
     await api.remove(editing.id);
     tasks = tasks.filter(task => task.id !== editing.id);
     render();
-    editor().hide();
+    await editor.hide();
 });
 
 on('#reset', 'click', reset);

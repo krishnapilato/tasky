@@ -6,9 +6,7 @@ A small task list. Sign in, add tasks with a due date and a priority, and tick t
 
 ![The task list](docs/tasks.png)
 
-| Editing a task | Dark theme |
-| --- | --- |
-| ![Edit dialog](docs/edit.png) | ![Dark theme](docs/dark.png) |
+![Editing a task](docs/edit.png)
 
 ## What it does
 
@@ -17,14 +15,13 @@ A small task list. Sign in, add tasks with a due date and a priority, and tick t
 - Due dates, with overdue tasks shown in red
 - Three priority levels
 - Filters for open tasks, tasks due today and finished tasks
-- Light and dark theme
 
 ## Built with
 
 - Java 27 and plain servlets on embedded Tomcat 11
-- Hibernate 7 with an in-memory H2 database
+- Hibernate 8 with an in-memory H2 database
 - Jackson 3 for JSON
-- Bootstrap 5.3.8 and plain JavaScript, without a build step
+- Bootstrap 6 and modern JavaScript modules, without a build step
 
 There is no Spring in this project.
 
@@ -93,6 +90,5 @@ src/main/resources/web
 └── js/
     ├── app.js        the page logic
     ├── api.js        talks to the server or to demo.js
-    ├── demo.js       replaces the server on GitHub Pages
-    └── theme.js      picks light or dark
+    └── demo.js       replaces the server on GitHub Pages
 ```

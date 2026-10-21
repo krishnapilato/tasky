@@ -1,6 +1,6 @@
 package io.github.krishnapilato.tasky.model;
 
-import java.time.LocalDate;
+import module java.base;
 
 public record TaskData(Long id, String title, String notes, LocalDate due, Priority priority, boolean done) {
 

@@ -1,9 +1,11 @@
+import seed from '../data/seed.json' with {type: 'json'};
+
 const KEY = 'tasky';
 
 let db;
 let opening;
 
-const fail = (status, message) => { throw Object.assign(new Error(message), {status}); }
+const fail = (status, message) => { throw Object.assign(new Error(message), {status}); };
 
 const text = value => (value ?? '').trim();
 
@@ -16,13 +18,8 @@ const day = offset => {
 const hash = async (password, salt) => {
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({
-        name: 'PBKDF2',
-        hash: 'SHA-256',
-        salt: encoder.encode(salt),
-        iterations: 600_000
-    }, key, 256);
-    return btoa(String.fromCharCode(...new Uint8Array(bits)));
+    const bits = await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 600_000}, key, 256);
+    return new Uint8Array(bits).toBase64();
 };
 
 const view = ({id, name, email}) => ({id, name, email});
@@ -66,7 +63,7 @@ const register = async form => {
 
 const login = async form => {
     const user = db.users.find(candidate => candidate.email === text(form.email).toLowerCase());
-    if (!user || user.password !== await hash(form.password ?? '', user.salt)) fail(401, 'Email or password is incorrect');
+    if (user?.password !== await hash(form.password ?? '', user.salt)) fail(401, 'Email or password is incorrect.');
     return signIn(user);
 };
 
@@ -90,15 +87,10 @@ const routes = {
 const open = async () => {
     db = JSON.parse(localStorage.getItem(KEY));
     if (db) return;
-    const seed = await fetch('data/seed.json').then(response => response.json());
     db = {nextId: 1, session: null, users: [], tasks: []};
-    const user = await addUser(seed.account.name, seed.account.email, seed.account.password);
-    for (const {dueIn, ...task} of seed.tasks)
-        db.tasks.push({
-            id: db.nextId++,
-            owner: user.id, ...checked(task),
-            due: dueIn === undefined ? null : day(dueIn)
-        });
+    const {account, tasks} = seed;
+    const user = await addUser(account.name, account.email, account.password);
+    for (const {dueIn, ...task} of tasks) db.tasks.push({id: db.nextId++, owner: user.id, ...checked(task), due: dueIn === undefined ? null : day(dueIn)});
 };
 
 export const local = async (method, path, body) => {

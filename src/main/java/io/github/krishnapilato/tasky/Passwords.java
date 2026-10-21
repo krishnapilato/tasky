@@ -1,11 +1,6 @@
 package io.github.krishnapilato.tasky;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.util.Base64;
+import module java.base;
 
 public final class Passwords {
 

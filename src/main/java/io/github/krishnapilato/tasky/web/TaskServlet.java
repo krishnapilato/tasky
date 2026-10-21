@@ -1,13 +1,12 @@
 package io.github.krishnapilato.tasky.web;
 
+import module java.base;
 import io.github.krishnapilato.tasky.Database;
 import io.github.krishnapilato.tasky.model.Task;
 import io.github.krishnapilato.tasky.model.TaskData;
 import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
 
 public class TaskServlet extends JsonServlet {
 

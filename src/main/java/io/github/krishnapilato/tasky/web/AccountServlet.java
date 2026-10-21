@@ -47,7 +47,7 @@ public class AccountServlet extends JsonServlet {
 
     private User login(Form form) {
         var user = Database.call(database -> find(database, text(form.email()).toLowerCase()));
-        if (user == null || form.password() == null || !Passwords.matches(form.password(), user.passwordHash())) throw new Problem(401, "Email or password is incorrect");
+        if (user == null || form.password() == null || !Passwords.matches(form.password(), user.passwordHash())) throw new Problem(401, "Email or password is incorrect.");
         return user;
     }
 

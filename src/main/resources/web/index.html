@@ -1,26 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
+    <meta name="color-scheme" content="light">
     <meta name="description" content="Tasky is a task list with due dates and priorities.">
     <title>Tasky</title>
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500&display=swap">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/app.css">
-    <script src="js/theme.js"></script>
 </head>
 <body class="user-select-none">
 <main class="auth" id="auth" hidden>
     <form id="account">
         <img src="icon.svg" alt="" width="44" height="44">
         <h1>Sign in to Tasky</h1>
-        <div class="alert alert-danger" id="auth-error" role="alert" hidden></div>
+        <div class="alert theme-danger" id="auth-error" role="alert" hidden></div>
         <div id="name-field" hidden>
             <label class="form-label" for="name">Name</label>
             <input class="form-control" id="name" name="name" autocomplete="name" maxlength="80">
@@ -34,10 +33,10 @@
             <input class="form-control" id="password" name="password" type="password" autocomplete="current-password"
                    minlength="8" required>
         </div>
-        <button class="btn btn-primary" id="submit">Sign in</button>
-        <button class="btn btn-light" id="try" type="button">Try the demo account</button>
+        <button class="btn-solid theme-primary" id="submit">Sign in</button>
+        <button class="btn-outline theme-secondary" id="try" type="button">Try the demo account</button>
         <p>or
-            <button class="btn btn-link" id="switch" type="button">Create an account</button>
+            <button class="btn-link" id="switch" type="button">Create an account</button>
         </p>
     </form>
 </main>
@@ -46,28 +45,25 @@
     <header class="topbar">
         <a class="brand" href="./"><img src="icon.svg" alt="" width="22" height="22">Tasky</a>
         <span class="who" id="who"></span>
-        <button class="btn btn-light" id="theme" type="button" aria-label="Switch between light and dark">
-            <i class="bi bi-moon"></i><i class="bi bi-sun"></i>
-        </button>
-        <button class="btn btn-light" id="logout" type="button">Sign out</button>
+        <button class="btn-outline theme-secondary" id="logout" type="button">Sign out</button>
     </header>
 
     <main class="page">
         <h1 id="hello">Hello</h1>
         <p class="summary" id="summary"></p>
-        <div class="alert alert-danger" id="error" role="alert" hidden></div>
+        <div class="alert theme-danger" id="error" role="alert" hidden></div>
 
         <form class="add" id="add">
             <input class="form-control" name="title" placeholder="Add a task" aria-label="Task title" maxlength="200"
                    required>
             <input class="form-control" name="due" type="date" aria-label="Due date">
-            <select class="form-select" name="priority" aria-label="Priority">
+            <select class="form-control" name="priority" aria-label="Priority">
                 <option value="none">No priority</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
             </select>
-            <button class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add</button>
+            <button class="btn-solid theme-primary"><i class="bi bi-plus-lg"></i> Add</button>
         </form>
 
         <nav class="filters" id="filters" aria-label="Filter tasks">
@@ -81,47 +77,45 @@
 
         <p class="note" id="demo-note" hidden>
             This demo keeps your tasks in this browser.
-            <button class="btn btn-link" id="reset" type="button">Start over</button>
+            <button class="btn-link" id="reset" type="button">Start over</button>
         </p>
     </main>
 </div>
 
-<div class="modal fade" id="editor" tabindex="-1" aria-label="Edit task">
-    <div class="modal-dialog">
-        <form class="modal-content" id="edit">
-            <div class="modal-body">
-                <input class="form-control" name="title" aria-label="Title" maxlength="200" required>
-                <textarea class="form-control" name="notes" rows="4" placeholder="Notes" aria-label="Notes"
-                          maxlength="2000"></textarea>
-                <div class="row g-2">
-                    <div class="col">
-                        <label class="form-label" for="edit-due">Due</label>
-                        <input class="form-control" id="edit-due" name="due" type="date">
-                    </div>
-                    <div class="col">
-                        <label class="form-label" for="edit-priority">Priority</label>
-                        <select class="form-select" id="edit-priority" name="priority">
-                            <option value="none">No priority</option>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
+<dialog class="dialog" id="editor" aria-label="Edit task">
+    <form id="edit">
+        <div class="dialog-body">
+            <input class="form-control" name="title" aria-label="Title" maxlength="200" required>
+            <textarea class="form-control" name="notes" rows="4" placeholder="Notes" aria-label="Notes"
+                      maxlength="2000"></textarea>
+            <div class="row g-2">
+                <div class="col">
+                    <label class="form-label" for="edit-due">Due</label>
+                    <input class="form-control" id="edit-due" name="due" type="date">
+                </div>
+                <div class="col">
+                    <label class="form-label" for="edit-priority">Priority</label>
+                    <select class="form-control" id="edit-priority" name="priority">
+                        <option value="none">No priority</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger me-auto" id="delete" type="button"><i class="bi bi-trash"></i> Delete
-                </button>
-                <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary">Save</button>
-            </div>
-        </form>
-    </div>
-</div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn-outline theme-danger me-auto" id="delete" type="button"><i class="bi bi-trash"></i> Delete
+            </button>
+            <button class="btn-outline theme-secondary" type="button" data-bs-dismiss="dialog">Cancel</button>
+            <button class="btn-solid theme-primary">Save</button>
+        </div>
+    </form>
+</dialog>
 
 <template id="row">
     <li class="task">
-        <input class="form-check-input" type="checkbox" aria-label="Done">
+        <input class="check" type="checkbox" aria-label="Done">
         <button class="task-title" type="button"></button>
         <i class="bi bi-text-left task-notes" title="Has notes"></i>
         <i class="bi bi-flag-fill task-flag"></i>
@@ -131,7 +125,7 @@
 
 <noscript>Tasky needs JavaScript to run.</noscript>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous" defer></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 package io.github.krishnapilato.tasky.web;
 
+import module java.base;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.WebResourceRoot.ResourceSetType;
 import org.apache.catalina.servlets.DefaultServlet;
@@ -8,9 +12,7 @@ import org.apache.catalina.webresources.StandardRoot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.tomcat.util.http.Rfc6265CookieProcessor;
 
-import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.file.Files;
 
 public final class Server {
 
@@ -33,7 +35,13 @@ public final class Server {
         cookies.setSameSiteCookies("strict");
         context.setCookieProcessor(cookies);
 
-        Tomcat.addServlet(context, "files", new DefaultServlet()).addMapping("/");
+        Tomcat.addServlet(context, "files", new DefaultServlet() {
+            @Override
+            protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+                response.setHeader("Cache-Control", "no-cache");
+                super.service(request, response);
+            }
+        }).addMapping("/");
         Tomcat.addServlet(context, "account", new AccountServlet()).addMapping("/api/account/*");
         Tomcat.addServlet(context, "tasks", new TaskServlet()).addMapping("/api/tasks/*");
 

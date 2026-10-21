@@ -38,7 +38,7 @@ public abstract class JsonServlet extends HttpServlet {
     protected <T> T read(HttpServletRequest request, Class<T> type) throws IOException {
         try {
             return Objects.requireNonNull(Json.MAPPER.readValue(request.getInputStream(), type));
-        } catch (JacksonException | NullPointerException unreadable) {
+        } catch (JacksonException | NullPointerException _) {
             throw new Problem(400, "The request could not be read");
         }
     }

@@ -1,5 +1,6 @@
 package io.github.krishnapilato.tasky;
 
+import module java.base;
 import io.github.krishnapilato.tasky.model.Task;
 import io.github.krishnapilato.tasky.model.User;
 import jakarta.persistence.EntityManager;
@@ -8,9 +9,6 @@ import org.h2.jdbcx.JdbcConnectionPool;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.tool.schema.Action;
-
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 public final class Database {
 

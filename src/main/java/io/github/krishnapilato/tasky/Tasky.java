@@ -1,18 +1,16 @@
 package io.github.krishnapilato.tasky;
 
-import io.github.krishnapilato.tasky.web.Server;
-import org.apache.catalina.util.ServerInfo;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.jul.Log4jBridgeHandler;
-import org.h2.engine.Constants;
-import org.hibernate.Version;
+import module java.base;
+import module java.management;
+import io.javalin.Javalin;
+import org.slf4j.LoggerFactory;
 
-public class Tasky {
+public final class Tasky {
 
-    void main() throws Exception {
-        Log4jBridgeHandler.install(true, null, true);
-        LogManager.getLogger(Tasky.class).info("Starting on Java {} with Tomcat {}, Hibernate {} and H2 {}", Runtime.version().feature(), ServerInfo.getServerNumber(), Version.getVersionString(), Constants.VERSION);
+    void main() throws IOException {
         Seed.load();
-        Server.run(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
+        var app = Javalin.create(Routes::configure).start(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080")));
+        LoggerFactory.getLogger(Tasky.class).info("Tasky is running on http://localhost:{} with Java {} (started in {} ms)",
+                app.port(), Runtime.version().feature(), ManagementFactory.getRuntimeMXBean().getUptime());
     }
 }

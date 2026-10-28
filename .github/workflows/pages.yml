@@ -3,23 +3,35 @@ name: Pages
 on:
   push:
     branches: [ main ]
-    paths:
-      - src/main/resources/web/**
-      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  lint:
+    uses: ./.github/workflows/lint.yml
+
+  ui:
+    uses: ./.github/workflows/ui.yml
+
+  lighthouse:
+    uses: ./.github/workflows/lighthouse.yml
+
   deploy:
+    name: Deploy only when every check passes
+    needs: [ build, lint, ui, lighthouse ]
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

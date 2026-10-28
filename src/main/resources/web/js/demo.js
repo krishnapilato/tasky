@@ -9,6 +9,7 @@ const fail = (status, message) => { throw Object.assign(new Error(message), {sta
 
 const text = value => (value ?? '').trim();
 
+// The Swedish locale formats dates as YYYY-MM-DD, the same format date inputs use.
 const day = offset => {
     const date = new Date();
     date.setDate(date.getDate() + offset);
@@ -28,15 +29,21 @@ const current = () => db.users.find(user => user.id === db.session) ?? fail(401,
 
 const mine = id => db.tasks.find(task => task.id === id && task.owner === current().id) ?? fail(404, 'Task not found');
 
-const data = ({owner, ...task}) => task;
+const data = ({id, title, notes, due, priority, done}) => ({id, title, notes, due, priority, done});
 
-const checked = task => {
+const PRIORITIES = ['none', 'low', 'medium', 'high'];
+
+const checked = (task, currentDue = null) => {
     const title = text(task.title);
     const notes = text(task.notes);
+    const due = task.due || null;
+    const priority = (task.priority ?? 'none').toLowerCase();
+    if (!PRIORITIES.includes(priority) || (due !== null && !/^\d{4}-\d{2}-\d{2}$/.test(due))) fail(400, 'The request could not be read');
     if (!title) fail(422, 'Give the task a title');
     if (title.length > 200) fail(422, 'Keep the title under 200 characters');
     if (notes.length > 2000) fail(422, 'Keep the notes under 2000 characters');
-    return {title, notes, due: task.due ?? null, priority: task.priority ?? 'none', done: Boolean(task.done)};
+    if (due !== null && due !== currentDue && due < day(0)) fail(422, 'Pick today or a later date');
+    return {title, notes, due, priority, done: Boolean(task.done)};
 };
 
 const addUser = async (name, email, password) => {
@@ -55,7 +62,7 @@ const register = async form => {
     const name = text(form.name);
     const email = text(form.email).toLowerCase();
     if (!name || name.length > 80) fail(422, 'Enter your name');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail(422, 'Enter a valid email address');
+    if (!/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(email)) fail(422, 'Enter a valid email address');
     if (text(form.password).length < 8) fail(422, 'Use at least 8 characters for the password');
     if (db.users.some(user => user.email === email)) fail(409, 'An account with this email already exists');
     return signIn(await addUser(name, email, form.password));
@@ -63,7 +70,7 @@ const register = async form => {
 
 const login = async form => {
     const user = db.users.find(candidate => candidate.email === text(form.email).toLowerCase());
-    if (user?.password !== await hash(form.password ?? '', user.salt)) fail(401, 'Email or password is incorrect.');
+    if (user?.password !== await hash(form.password ?? '', user?.salt)) fail(401, 'Email or password is incorrect.');
     return signIn(user);
 };
 
@@ -77,11 +84,15 @@ const routes = {
     'GET /account': () => ({demo: true, user: db.session ? view(current()) : null}),
     'POST /account/register': register,
     'POST /account/login': login,
-    'POST /account/logout': () => void (db.session = null),
+    'POST /account/logout': () => {
+        db.session = null;
+    },
     'GET /tasks': () => db.tasks.filter(task => task.owner === current().id).map(data),
     'POST /tasks': create,
-    'PUT /tasks/id': (task, id) => data(Object.assign(mine(id), checked(task))),
-    'DELETE /tasks/id': (_, id) => void db.tasks.splice(db.tasks.indexOf(mine(id)), 1)
+    'PUT /tasks/id': (task, id) => data(Object.assign(mine(id), checked(task, mine(id).due))),
+    'DELETE /tasks/id': (_, id) => {
+        db.tasks.splice(db.tasks.indexOf(mine(id)), 1);
+    }
 };
 
 const open = async () => {
@@ -94,7 +105,8 @@ const open = async () => {
 };
 
 export const local = async (method, path, body) => {
-    await (opening ??= open());
+    opening ??= open();
+    await opening;
     const [, id] = path.match(/^\/tasks\/(\d+)$/) ?? [];
     const result = await routes[`${method} ${id ? '/tasks/id' : path}`](body, Number(id));
     localStorage.setItem(KEY, JSON.stringify(db));

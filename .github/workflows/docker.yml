@@ -1,0 +1,31 @@
+name: Docker
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    name: Build the image and run it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: tasky:ci
+      - name: Run the container and call it
+        run: |
+          docker run --detach --name tasky --publish 8080:8080 tasky:ci
+          for _ in $(seq 1 30); do curl --silent --fail http://localhost:8080/api/account > /dev/null && break; sleep 1; done
+          curl --silent --fail http://localhost:8080/api/account
+          [ "$(docker inspect --format '{{.Config.User}}' tasky)" = "10001" ] || { echo "The container must not run as root"; exit 1; }
+          if docker logs tasky 2>&1 | grep -E 'WARN|ERROR'; then echo "The server logged warnings"; exit 1; fi

@@ -4,12 +4,14 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: Compile, enforce, PMD and smoke test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -18,4 +20,23 @@ jobs:
           distribution: oracle
           java-version: 27
           cache: maven
-      - run: mvn --batch-mode --no-transfer-progress package
+      - name: Build with warnings and unused code as errors
+        run: mvn --batch-mode --no-transfer-progress verify
+        env:
+          PMD_JAVA_DISABLE_AUX_CLASSPATH_WARNINGS: true
+      - name: Smoke test the JAR
+        run: |
+          PORT=8080 java -jar target/tasky.jar > server.log 2>&1 &
+          for _ in $(seq 1 30); do curl --silent --fail http://localhost:8080/api/account > /dev/null && break; sleep 1; done
+          credentials=$(jq -c '.account | {email, password}' src/main/resources/web/data/seed.json)
+          expect() { [ "$1" = "$2" ] || { echo "Expected $2 but got $1 for $3"; cat server.log; exit 1; }; }
+          expect "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/)" 200 "the page"
+          expect "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/tasks)" 401 "tasks without a session"
+          expect "$(curl -s -c jar -o /dev/null -w '%{http_code}' -d "$credentials" http://localhost:8080/api/account/login)" 200 "signing in"
+          expect "$(curl -s -b jar http://localhost:8080/api/tasks | jq length)" "$(jq '.tasks | length' src/main/resources/web/data/seed.json)" "seeded tasks"
+          expect "$(curl -s -I http://localhost:8080/ | grep -ci '^x-content-type-options: nosniff')" 1 "security headers"
+          if grep -E 'WARN|ERROR' server.log; then echo "The server logged warnings"; exit 1; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tasky
+          path: target/tasky.jar

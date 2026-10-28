@@ -11,6 +11,7 @@ const http = async (method, path, body) => {
     return data;
 };
 
+// On GitHub Pages api/account is a static file containing {"demo": true}, which switches the page to the in-browser backend.
 export const {demo} = await fetch('api/account').then(response => response.json());
 
 const request = demo ? local : http;

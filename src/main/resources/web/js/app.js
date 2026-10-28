@@ -1,4 +1,4 @@
-import {Dialog} from 'https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js';
+import {Dialog} from 'bootstrap';
 import seed from '../data/seed.json' with {type: 'json'};
 import {api, demo} from './api.js';
 import {reset} from './demo.js';
@@ -31,6 +31,7 @@ const $ = selector => document.querySelector(selector);
 
 const editor = Dialog.getOrCreateInstance($('#editor'));
 
+// The Swedish locale formats dates as YYYY-MM-DD, the same format date inputs use.
 const today = () => new Date().toLocaleDateString('sv-SE');
 
 const isLate = task => FILTERS.today(task) && task.due < today();
@@ -60,7 +61,9 @@ const render = () => {
     const shown = tasks.filter(FILTERS[filter]).toSorted(byDueThenPriority);
     const open = tasks.filter(FILTERS.open).length;
     const late = tasks.filter(isLate).length;
-    $('#summary').textContent = `${longDate.format(new Date())} · ${open} open${late ? `, ${late} overdue` : ''}`;
+    const overdue = late ? `, ${late} overdue` : '';
+    $('#summary').textContent = `${longDate.format(new Date())} · ${open} open${overdue}`;
+    $('#add').elements.due.min = today();
     $('#tasks').replaceChildren(...shown.map(row));
     $('#empty').textContent = EMPTY[filter];
     $('#empty').hidden = shown.length > 0;
@@ -92,7 +95,8 @@ const report = error => {
 
 const on = (selector, type, handler) => $(selector).addEventListener(type, async event => {
     if (type === 'submit') event.preventDefault();
-    $('#error').hidden = $('#auth-error').hidden = true;
+    $('#error').hidden = true;
+    $('#auth-error').hidden = true;
     try {
         await handler(event);
     } catch (error) {
@@ -151,6 +155,7 @@ on('#tasks', 'change', event => save({...taskOf(event.target), done: event.targe
 on('#tasks', 'click', event => {
     if (!event.target.closest('.task-title')) return;
     editing = taskOf(event.target);
+    $('#edit').elements.due.min = editing.due !== null && editing.due < today() ? editing.due : today();
     for (const field of ['title', 'notes', 'due', 'priority']) $('#edit').elements[field].value = editing[field] ?? '';
     editor.show();
 });

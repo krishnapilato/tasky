@@ -1,18 +1,17 @@
 :root {
-    --paper: #ffffff;
+    --paper: #fff;
     --ink: #37352f;
-    --ink-soft: #787774;
+    --ink-soft: #6f6e6a;
     --ink-faint: #a5a4a0;
     --line: #ebebe9;
     --line-strong: #dcdbd7;
-    --hover: rgba(55, 53, 47, .06);
-    --accent: #2383e2;
-    --accent-strong: #1a6fc7;
-    --accent-wash: rgba(35, 131, 226, .14);
+    --hover: rgb(55 53 47 / 6%);
+    --accent: #1a6fc7;
+    --accent-strong: #155ca8;
+    --accent-wash: rgb(35 131 226 / 14%);
     --danger: #d44c47;
     --medium: #d9730d;
     --low: #337ea9;
-
     --bs-body-font-family: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
     --bs-body-font-size: .9375rem;
     --bs-fg-body: var(--ink);
@@ -37,7 +36,7 @@ body {
 
 h1 {
     margin: 0;
-    font-family: "Newsreader", Georgia, serif;
+    font-family: Newsreader, Georgia, serif;
     font-size: 2.25rem;
     font-weight: 500;
     letter-spacing: -.01em;
@@ -87,6 +86,7 @@ h1 {
 
 .form-control {
     --bs-control-box-shadow: none;
+
     border-color: var(--line-strong);
     background-color: var(--paper);
     color: var(--ink);
@@ -245,6 +245,7 @@ h1 {
     --bs-check-border-color: var(--ink-faint);
     --bs-check-checked-bg: var(--accent);
     --bs-check-checked-border-color: var(--accent);
+
     border-radius: 50%;
     cursor: pointer;
 }
@@ -326,8 +327,8 @@ h1 {
 .dialog {
     --bs-dialog-border-color: var(--line-strong);
     --bs-dialog-border-radius: 10px;
-    --bs-dialog-box-shadow: 0 12px 32px rgba(15, 15, 15, .18);
-    --bs-dialog-backdrop-bg: rgba(15, 15, 15, .35);
+    --bs-dialog-box-shadow: 0 12px 32px rgb(15 15 15 / 18%);
+    --bs-dialog-backdrop-bg: rgb(15 15 15 / 35%);
     --bs-dialog-backdrop-blur: 0;
 }
 
@@ -345,7 +346,7 @@ h1 {
     border: 0;
 }
 
-@media (max-width: 576px) {
+@media (width <= 576px) {
     .page {
         padding-top: 1.5rem;
     }

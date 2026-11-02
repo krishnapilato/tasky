@@ -1,13 +1,8 @@
 # Tasky
 
 [![Build](https://github.com/krishnapilato/tasky/actions/workflows/build.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/build.yml)
-[![Lint](https://github.com/krishnapilato/tasky/actions/workflows/lint.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/lint.yml)
-[![UI tests](https://github.com/krishnapilato/tasky/actions/workflows/ui.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/ui.yml)
-[![Lighthouse](https://github.com/krishnapilato/tasky/actions/workflows/lighthouse.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/lighthouse.yml)
-[![Docker](https://github.com/krishnapilato/tasky/actions/workflows/docker.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/docker.yml)
 [![Security](https://github.com/krishnapilato/tasky/actions/workflows/security.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/security.yml)
 [![Pages](https://github.com/krishnapilato/tasky/actions/workflows/pages.yml/badge.svg)](https://github.com/krishnapilato/tasky/actions/workflows/pages.yml)
-[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)](.github/dependabot.yml)
 
 A small task list. Sign in, add tasks with a due date and a priority, and tick them off.
 
@@ -33,7 +28,7 @@ A small task list. Sign in, add tasks with a due date and a priority, and tick t
 - Jackson 3 for JSON and password4j for Argon2id password hashes
 - Bootstrap 6 and modern JavaScript modules, without a build step
 
-There is no Spring in this project.
+There is no Spring in this project. The reasons behind this and other choices are in [docs/decisions.md](docs/decisions.md).
 
 ## Run it
 
@@ -104,7 +99,7 @@ The Lighthouse workflow fails if performance drops below 90 or any other score d
 
 ## Checks and tests
 
-Every push and pull request runs one workflow per check, and each has a badge at the top of this page. GitHub Pages is only updated when Build, Lint, UI tests and Lighthouse all pass, so a broken commit never reaches the live demo.
+Every push and pull request runs one workflow per check. GitHub Pages is only updated when Build, Lint, UI tests and Lighthouse all pass, so a broken commit never reaches the live demo.
 
 | Workflow | What it checks | Fails on |
 | --- | --- | --- |
@@ -152,6 +147,8 @@ src/main/resources/web
     ├── app.js        the page logic
     ├── api.js        talks to the server or to demo.js
     └── demo.js       replaces the server on GitHub Pages
+
+docs/decisions.md     why it is built this way
 
 tests
 ├── app.spec.js       Playwright test of the whole app

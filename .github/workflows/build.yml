@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile, enforce, PMD and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: oracle
+          java-version: 27
+          cache: maven
+      - name: Build with warnings and unused code as errors
+        run: mvn --batch-mode --no-transfer-progress --strict-checksums verify
+        env:
+          PMD_JAVA_DISABLE_AUX_CLASSPATH_WARNINGS: true
+      - name: Smoke test the JAR on a port other than the default
+        run: |
+          base=http://localhost:8093
+          seed=src/main/resources/web/data/seed.json
+          PORT=8093 java -jar target/tasky.jar > server.log 2>&1 &
+          for _ in $(seq 1 30); do curl --silent --fail "$base/api/account" > /dev/null && break; sleep 1; done
+          credentials=$(jq -c '.account | {email, password}' "$seed")
+          wrong=$(jq -c '.account | {email, password: "not-the-password"}' "$seed")
+          headers=$(curl -s -I "$base/")
+          expect() { [ "$1" = "$2" ] || { echo "Expected $2 but got $1 for $3"; cat server.log; exit 1; }; }
+          status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          expect "$(grep -c "running at $base" server.log)" 1 "the startup line with the PORT"
+          expect "$(status "$base/")" 200 "the page"
+          expect "$(status "$base/api/tasks")" 401 "tasks without a session"
+          expect "$(status -d "$wrong" "$base/api/account/login")" 401 "a wrong password"
+          expect "$(status -d '{"name":"CI","email":"not-an-email","password":"long-enough"}' "$base/api/account/register")" 422 "an invalid email"
+          expect "$(status -d 'not json' "$base/api/account/login")" 400 "an unreadable body"
+          expect "$(status -c jar -d "$credentials" "$base/api/account/login")" 200 "signing in"
+          expect "$(curl -s -b jar "$base/api/tasks" | jq length)" "$(jq '.tasks | length' "$seed")" "seeded tasks"
+          expect "$(status -b jar -X DELETE "$base/api/tasks/999999")" 404 "a task that does not exist"
+          for header in 'x-content-type-options: nosniff' 'x-frame-options: deny' 'referrer-policy: no-referrer' 'permissions-policy:'; do
+            expect "$(grep -ci "^$header" <<< "$headers")" 1 "the $header header"
+          done
+          if grep -E 'WARN|ERROR' server.log; then echo "The server logged warnings"; exit 1; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tasky
+          path: target/tasky.jar

@@ -1,0 +1,10 @@
+.git
+.github
+.idea
+docs
+target
+*.md
+node_modules
+tests
+playwright-report
+test-results

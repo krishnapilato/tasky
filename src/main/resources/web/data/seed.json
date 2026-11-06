@@ -1,0 +1,72 @@
+{
+  "account": {
+    "name": "Jamie Rivera",
+    "email": "demo@tasky.test",
+    "password": "plan-the-day-27"
+  },
+  "tasks": [
+    {
+      "title": "Renew passport",
+      "notes": "Photos are in the top drawer. The appointment code is in the confirmation email.",
+      "priority": "high",
+      "dueIn": -2
+    },
+    {
+      "title": "Reply to Priya about the design review",
+      "priority": "medium",
+      "dueIn": 0
+    },
+    {
+      "title": "Morning run",
+      "dueIn": 0
+    },
+    {
+      "title": "Prepare slides for the product demo",
+      "notes": "Keep it to ten slides and start with the problem.",
+      "priority": "high",
+      "dueIn": 1
+    },
+    {
+      "title": "Buy a birthday present for Sam",
+      "priority": "low",
+      "dueIn": 3
+    },
+    {
+      "title": "Pay the rent",
+      "priority": "medium",
+      "dueIn": 5
+    },
+    {
+      "title": "Book train tickets to Milan",
+      "dueIn": 8
+    },
+    {
+      "title": "Read two chapters of the Java book",
+      "priority": "low"
+    },
+    {
+      "title": "Sort the photos from the summer"
+    },
+    {
+      "title": "Send the invoices for September",
+      "priority": "high",
+      "dueIn": -3,
+      "done": true
+    },
+    {
+      "title": "Call the landlord about the heating",
+      "priority": "medium",
+      "dueIn": -1,
+      "done": true
+    },
+    {
+      "title": "Water the plants",
+      "dueIn": -1,
+      "done": true
+    },
+    {
+      "title": "Clean the kitchen",
+      "done": true
+    }
+  ]
+}

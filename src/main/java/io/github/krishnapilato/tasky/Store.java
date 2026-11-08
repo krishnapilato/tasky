@@ -21,8 +21,8 @@ public final class Store {
             create table tasks (
                 id bigint auto_increment primary key,
                 owner_id bigint not null references users (id),
-                title varchar(200) not null,
-                notes varchar(2000) not null,
+                title varchar(50) not null,
+                notes varchar(150) not null,
                 due date,
                 priority varchar(6) not null,
                 done boolean not null

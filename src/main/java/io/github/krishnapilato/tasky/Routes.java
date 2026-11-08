@@ -15,12 +15,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.cfg.EnumFeature;
+import tools.jackson.databind.cfg.CoercionAction;
+import tools.jackson.databind.cfg.CoercionInputShape;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.type.LogicalType;
 
 public final class Routes {
 
-    static final JsonMapper JSON = JsonMapper.builder().enable(EnumFeature.WRITE_ENUMS_TO_LOWERCASE).enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS).build();
+    static final JsonMapper JSON = JsonMapper.builder()
+            .enable(EnumFeature.WRITE_ENUMS_TO_LOWERCASE)
+            .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+            .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+            .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+            .withCoercionConfig(LogicalType.Textual, coercion -> {
+                coercion.setCoercion(CoercionInputShape.Integer, CoercionAction.Fail);
+                coercion.setCoercion(CoercionInputShape.Float, CoercionAction.Fail);
+                coercion.setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail);
+            })
+            .build();
 
     private static final Logger LOG = LoggerFactory.getLogger(Routes.class);
     private static final String USER_ID = "userId";
@@ -68,7 +84,7 @@ public final class Routes {
         config.routes.post("/api/account/login", ctx -> signIn(ctx, login(body(ctx, Form.class))));
         config.routes.post("/api/account/logout", Routes::signOut);
         config.routes.get("/api/tasks", ctx -> ctx.json(Store.tasks(userId(ctx))));
-        config.routes.post("/api/tasks", ctx -> ctx.status(201).json(Store.addTask(userId(ctx), checked(body(ctx, Task.class), null))));
+        config.routes.post("/api/tasks", ctx -> ctx.status(201).json(Store.addTask(userId(ctx), checked(body(ctx, Task.class), null, today(ctx)))));
         config.routes.put("/api/tasks/{id}", Routes::update);
         config.routes.delete("/api/tasks/{id}", Routes::delete);
     }
@@ -78,10 +94,21 @@ public final class Routes {
         ctx.header("X-Frame-Options", "DENY");
         ctx.header("Referrer-Policy", "no-referrer");
         ctx.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        if (!ctx.path().startsWith("/api/")) return;
+        ctx.header("Cache-Control", "no-store");
+        if (Set.of("GET", "HEAD", "OPTIONS").contains(ctx.method().name())) return;
+        if (!"1".equals(ctx.header("X-Tasky-Request"))) throw new HttpResponseException(403, "Request not allowed");
+        var origin = ctx.header("Origin");
+        if (origin != null && !origin.equals(ctx.scheme() + "://" + ctx.host())) throw new HttpResponseException(403, "Request not allowed");
+        var site = ctx.header("Sec-Fetch-Site");
+        if (site != null && !Set.of("same-origin", "none").contains(site)) throw new HttpResponseException(403, "Request not allowed");
+        if (Set.of("POST", "PUT").contains(ctx.method().name()) && !"application/json".equalsIgnoreCase(Optional.ofNullable(ctx.contentType()).orElse("").split(";", 2)[0].strip())) {
+            throw new HttpResponseException(415, "Send requests as application/json");
+        }
     }
 
     private static <T> T body(Context ctx, Class<T> type) {
-        return Optional.ofNullable(ctx.bodyAsClass(type)).orElseThrow(() -> new HttpResponseException(400, UNREADABLE));
+        return Optional.ofNullable(JSON.readValue(ctx.body(), type)).orElseThrow(() -> new HttpResponseException(400, UNREADABLE));
     }
 
     private static User register(Form form) {
@@ -89,8 +116,9 @@ public final class Routes {
         var email = text(form.email()).toLowerCase(Locale.ROOT);
 
         if (name.isEmpty() || name.length() > 80) throw new HttpResponseException(422, "Enter your name.");
-        if (!EMAIL.matcher(email).matches()) throw new HttpResponseException(422, "Enter a valid email address.");
+        if (email.length() > 254 || !EMAIL.matcher(email).matches()) throw new HttpResponseException(422, "Enter a valid email address.");
         if (text(form.password()).length() < 8) throw new HttpResponseException(422, "Use at least 8 characters for the password.");
+        if (form.password().length() > 1024) throw new HttpResponseException(422, "Keep the password under 1024 characters.");
         if (Store.userByEmail(email).isPresent()) throw new HttpResponseException(409, "An account with this email already exists.");
 
         return Store.addUser(name, email, Password.hash(form.password()).addRandomSalt().withArgon2().getResult());
@@ -98,18 +126,28 @@ public final class Routes {
 
     private static User login(Form form) {
         var email = text(form.email()).toLowerCase(Locale.ROOT);
+        if (email.length() > 254 || !EMAIL.matcher(email).matches() || form.password() == null || form.password().length() > 1024) throw new HttpResponseException(401, "Email or password is incorrect.");
         var since = Instant.now().minus(LOGIN_WINDOW);
-        var failures = FAILED_LOGINS.getOrDefault(email, List.of()).stream().filter(since::isBefore).toList();
-        if (failures.size() >= MAX_FAILED_LOGINS) throw new HttpResponseException(429, "Too many attempts. Try again in a few minutes");
-        var user = Store.userByEmail(email).filter(found -> form.password() != null && Password.check(form.password(), found.passwordHash()).withArgon2());
-        user.ifPresentOrElse(_ -> FAILED_LOGINS.remove(email), () -> FAILED_LOGINS.put(email, Stream.concat(failures.stream(), Stream.of(Instant.now())).toList()));
-        return user.orElseThrow(() -> new HttpResponseException(401, "Email or password is incorrect."));
+        FAILED_LOGINS.entrySet().removeIf(entry -> entry.getValue().stream().noneMatch(since::isBefore));
+        var authenticated = new AtomicReference<User>();
+        FAILED_LOGINS.compute(email, (_, attempts) -> {
+            var failures = Optional.ofNullable(attempts).orElse(List.of()).stream().filter(since::isBefore).toList();
+            if (failures.size() >= MAX_FAILED_LOGINS) throw new HttpResponseException(429, "Too many attempts. Try again in a few minutes");
+            var user = Store.userByEmail(email).filter(found -> form.password() != null && Password.check(form.password(), found.passwordHash()).withArgon2());
+            if (user.isPresent()) {
+                authenticated.set(user.get());
+                return null;
+            }
+            return Stream.concat(failures.stream(), Stream.of(Instant.now())).toList();
+        });
+        return Optional.ofNullable(authenticated.get()).orElseThrow(() -> new HttpResponseException(401, "Email or password is incorrect."));
     }
 
     private static void signIn(Context ctx, User user) {
         ctx.req().getSession(true);
         ctx.req().changeSessionId();
         ctx.req().getSession().setAttribute(USER_ID, user.id());
+        ctx.req().getSession().setMaxInactiveInterval(1800);
         ctx.json(user.view());
     }
 
@@ -122,7 +160,7 @@ public final class Routes {
         var owner = userId(ctx);
         var id = taskId(ctx);
         var current = Store.task(owner, id).orElseThrow(Routes::missing);
-        ctx.json(Store.updateTask(owner, id, checked(body(ctx, Task.class), current.due())).orElseThrow(Routes::missing));
+        ctx.json(Store.updateTask(owner, id, checked(body(ctx, Task.class), current.due(), today(ctx))).orElseThrow(Routes::missing));
     }
 
     private static void delete(Context ctx) {
@@ -144,18 +182,24 @@ public final class Routes {
         return Long.parseLong(id);
     }
 
-    private static Task checked(Task task, LocalDate currentDue) {
+    private static Task checked(Task task, LocalDate currentDue, LocalDate today) {
+        if (task.due() != null && (task.due().getYear() < 1 || task.due().getYear() > 9999)) throw new HttpResponseException(400, UNREADABLE);
         if (task.title().isEmpty()) throw new HttpResponseException(422, "Give the task a title.");
-        if (task.title().length() > 200) throw new HttpResponseException(422, "Keep the title under 200 characters.");
-        if (task.notes().length() > 2000) throw new HttpResponseException(422, "Keep the notes under 2000 characters.");
-        if (task.due() != null && !task.due().equals(currentDue) && task.due().isBefore(earliestToday())) throw new HttpResponseException(422, "Pick today or a later date.");
+        if (task.title().length() > 50) throw new HttpResponseException(422, "Keep the title under 50 characters.");
+        if (task.notes().length() > 150) throw new HttpResponseException(422, "Keep the notes under 150 characters.");
+        if (task.due() != null && !task.due().equals(currentDue) && task.due().isBefore(today)) throw new HttpResponseException(422, "Pick today or a later date.");
 
         return task;
     }
 
-    // The browser picks dates in its own time zone, which can be up to one day behind UTC.
-    private static LocalDate earliestToday() {
-        return LocalDate.now(ZoneOffset.UTC).minusDays(1);
+    // Date inputs represent a calendar day in the browser's time zone.
+    private static LocalDate today(Context ctx) {
+        try {
+            var zone = Optional.ofNullable(ctx.header("X-Time-Zone")).map(ZoneId::of).orElse(ZoneOffset.UTC);
+            return LocalDate.now(zone);
+        } catch (DateTimeException _) {
+            throw new HttpResponseException(400, UNREADABLE);
+        }
     }
 
     private static HttpResponseException missing() {

@@ -37,7 +37,7 @@ jobs:
           wrong=$(jq -c '.account | {email, password: "not-the-password"}' "$seed")
           headers=$(curl -s -I "$base/")
           expect() { [ "$1" = "$2" ] || { echo "Expected $2 but got $1 for $3"; cat server.log; exit 1; }; }
-          status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+          status() { curl -s -H 'Content-Type: application/json' -H 'X-Tasky-Request: 1' -o /dev/null -w '%{http_code}' "$@"; }
           expect "$(grep -c "running at $base" server.log)" 1 "the startup line with the PORT"
           expect "$(status "$base/")" 200 "the page"
           expect "$(status "$base/api/tasks")" 401 "tasks without a session"

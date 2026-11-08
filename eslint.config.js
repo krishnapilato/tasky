@@ -20,7 +20,7 @@ const strict = {
 };
 
 export default [
-    {ignores: ['target/', 'node_modules/', 'playwright-report/', 'test-results/']},
+    {ignores: ['target/', 'node_modules/', 'playwright-report/', 'test-results/', 'src/main/resources/web/vendor/']},
     {linterOptions: {reportUnusedDisableDirectives: 'error', reportUnusedInlineConfigs: 'error'}},
     js.configs.recommended,
     sonarjs.configs.recommended,
@@ -30,7 +30,7 @@ export default [
         rules: strict
     },
     {
-        files: ['tests/**/*.js', '*.config.js'],
+        files: ['tests/**/*.js', '*.config.js', 'scripts/**/*.js'],
         languageOptions: {ecmaVersion: 'latest', sourceType: 'module', globals: {...globals.node, ...globals.browser}},
         rules: strict
     }

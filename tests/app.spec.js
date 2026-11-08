@@ -15,7 +15,7 @@ const fill = async (form, values) => {
     for (const [name, value] of Object.entries(values)) {
         const field = form.locator(`[name="${name}"]`);
         if (await field.evaluate(element => element.tagName) === 'SELECT') await field.selectOption(value);
-        else await field.fill(value);
+        else await field.fill(name === 'due' && value ? value.split('-').toReversed().join('/') : value);
     }
     await form.evaluate(element => element.requestSubmit());
 };
@@ -44,11 +44,11 @@ test('the whole app works from sign-in to sign-out', async ({page}) => {
     await page.goto('./');
     const account = page.locator('#account');
 
-    await test.step('sign-in screen, light theme and pinned CDN files', async () => {
+    await test.step('sign-in screen, light theme and pinned local dependencies', async () => {
         await expect(page.locator('#auth')).toBeVisible();
         await expect(page.locator('#app')).toBeHidden();
         expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('light');
-        expect(await page.locator('link[href*="cdn.jsdelivr"]').evaluateAll(links => links.every(link => link.integrity))).toBe(true);
+        expect(await page.locator('link[data-package]').evaluateAll(links => links.length > 0 && links.every(link => link.integrity && new URL(link.href).origin === location.origin))).toBe(true);
         expect(await page.locator('script[type="importmap"]').textContent()).toContain('"integrity"');
     });
 
@@ -66,7 +66,7 @@ test('the whole app works from sign-in to sign-out', async ({page}) => {
         await expect(page.locator('#summary')).toContainText('9 open, 1 overdue');
         await expect(page.locator('.task-title').first()).toHaveText('Renew passport');
         await expect(page.locator('.task-due').first()).toHaveClass(/late/);
-        await expect(page.locator('#add [name="due"]')).toHaveAttribute('min', today);
+        await expect(page.locator('#add [name="due"]')).toHaveAttribute('placeholder', 'dd/mm/yyyy');
     });
 
     await test.step('adding, finishing and reopening tasks', async () => {
@@ -74,7 +74,7 @@ test('the whole app works from sign-in to sign-out', async ({page}) => {
         await fill(add, {title: 'Write the report', due: tomorrow, priority: 'high'});
         await expect(page.locator('.task')).toHaveCount(10);
         await fill(add, {title: '   '});
-        await expect(page.locator('#error')).toHaveText('Give the task a title.');
+        await expect(page.locator('#add-title-error')).toHaveText('Give the task a title.');
 
         await row(page, 'Morning run').locator('.check').click();
         await expect(page.locator('.task')).toHaveCount(9);
@@ -97,10 +97,16 @@ test('the whole app works from sign-in to sign-out', async ({page}) => {
         const editor = page.locator('#editor');
         const form = page.locator('#edit');
         await openTask(page, 'Renew passport');
+        const cancelButton = editor.getByRole('button', {name: 'Cancel', exact: true});
+        const saveButton = editor.getByRole('button', {name: 'Save changes', exact: true});
+        const cancelBox = await cancelButton.boundingBox();
+        const saveBox = await saveButton.boundingBox();
+        expect(cancelBox.y).toBe(saveBox.y);
+        expect(cancelBox.height).toBe(saveBox.height);
         await expect(form.locator('[name="title"]')).toHaveValue('Renew passport');
         await expect(form.locator('[name="priority"]')).toHaveValue('high');
         const due = form.locator('[name="due"]');
-        expect(await due.getAttribute('min')).toBe(await due.inputValue());
+        expect(await due.inputValue()).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
 
         await editor.getByRole('button', {name: 'Cancel'}).click();
         await expect(editor).toBeHidden();
@@ -113,6 +119,8 @@ test('the whole app works from sign-in to sign-out', async ({page}) => {
 
         await openTask(page, 'Sort the photos from the summer');
         await page.locator('#delete').click();
+        await expect(page.locator('#editor')).toBeVisible();
+        await page.getByRole('button', {name: 'Confirm delete', exact: true}).click();
         await expect(editor).toBeHidden();
         await expect(page.locator('.task')).toHaveCount(9);
         expect(await counts(page)).toEqual([9, 2, 4]);

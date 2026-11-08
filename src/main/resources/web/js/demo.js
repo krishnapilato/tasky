@@ -1,4 +1,5 @@
 import seed from '../data/seed.json' with {type: 'json'};
+import {accountSchema, taskSchema, checked as validateTask} from './validation.js';
 
 const KEY = 'tasky';
 
@@ -31,20 +32,7 @@ const mine = id => db.tasks.find(task => task.id === id && task.owner === curren
 
 const data = ({id, title, notes, due, priority, done}) => ({id, title, notes, due, priority, done});
 
-const PRIORITIES = ['none', 'low', 'medium', 'high'];
-
-const checked = (task, currentDue = null) => {
-    const title = text(task.title);
-    const notes = text(task.notes);
-    const due = task.due || null;
-    const priority = (task.priority ?? 'none').toLowerCase();
-    if (!PRIORITIES.includes(priority) || (due !== null && !/^\d{4}-\d{2}-\d{2}$/.test(due))) fail(400, 'The request could not be read');
-    if (!title) fail(422, 'Give the task a title.');
-    if (title.length > 200) fail(422, 'Keep the title under 200 characters.');
-    if (notes.length > 2000) fail(422, 'Keep the notes under 2000 characters.');
-    if (due !== null && due !== currentDue && due < day(0)) fail(422, 'Pick today or a later date.');
-    return {title, notes, due, priority, done: Boolean(task.done)};
-};
+const checked = (task, currentDue = null) => validateTask(taskSchema(currentDue), task);
 
 const addUser = async (name, email, password) => {
     const salt = crypto.randomUUID();
@@ -59,16 +47,13 @@ const signIn = user => {
 };
 
 const register = async form => {
-    const name = text(form.name);
-    const email = text(form.email).toLowerCase();
-    if (!name || name.length > 80) fail(422, 'Enter your name.');
-    if (!/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(email)) fail(422, 'Enter a valid email address.');
-    if (text(form.password).length < 8) fail(422, 'Use at least 8 characters for the password.');
+    const {name, email, password} = validateTask(accountSchema(true), form);
     if (db.users.some(user => user.email === email)) fail(409, 'An account with this email already exists.');
-    return signIn(await addUser(name, email, form.password));
+    return signIn(await addUser(name, email, password));
 };
 
 const login = async form => {
+    if (text(form.email).length > 254 || (form.password?.length ?? 0) > 1024) fail(401, 'Email or password is incorrect.');
     const user = db.users.find(candidate => candidate.email === text(form.email).toLowerCase());
     if (user?.password !== await hash(form.password ?? '', user?.salt)) fail(401, 'Email or password is incorrect.');
     return signIn(user);
@@ -108,7 +93,9 @@ export const local = async (method, path, body) => {
     opening ??= open();
     await opening;
     const [, id] = path.match(/^\/tasks\/(\d+)$/) ?? [];
-    const result = await routes[`${method} ${id ? '/tasks/id' : path}`](body, Number(id));
+    const route = routes[`${method} ${id ? '/tasks/id' : path}`];
+    if (!route) fail(404, 'Task not found');
+    const result = await route(body, Number(id));
     localStorage.setItem(KEY, JSON.stringify(db));
     return result ?? null;
 };

@@ -1,2 +1,3 @@
 src/main/resources/web/vendor/* -text
 scripts/alpine-LICENSE.txt -text
+*.js linguist-detectable=false

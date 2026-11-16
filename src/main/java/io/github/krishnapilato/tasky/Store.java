@@ -3,13 +3,17 @@ package io.github.krishnapilato.tasky;
 import module java.base;
 import io.github.krishnapilato.tasky.model.Task;
 import io.github.krishnapilato.tasky.model.User;
+import java.sql.SQLIntegrityConstraintViolationException;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.mapper.reflect.ConstructorMapper;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 
 public final class Store {
 
     private static final String OWNER = "owner";
+    private static final String SELECT_USER = "select id, name, email, password_hash from users";
+    private static final String SELECT_TASK = "select id, title, notes, due, priority, done from tasks";
 
     private static final String SCHEMA = """
             create table users (
@@ -40,33 +44,39 @@ public final class Store {
     private Store() {}
 
     public static Optional<User> user(long id) {
-        return DB.withHandle(handle -> handle.createQuery("select * from users where id = :id").bind("id", id).mapTo(User.class).findOne());
+        return DB.withHandle(handle -> handle.createQuery(SELECT_USER + " where id = :id").bind("id", id).mapTo(User.class).findOne());
     }
 
     public static Optional<User> userByEmail(String email) {
-        return DB.withHandle(handle -> handle.createQuery("select * from users where email = :email").bind("email", email).mapTo(User.class).findOne());
+        return DB.withHandle(handle -> handle.createQuery(SELECT_USER + " where email = :email").bind("email", email).mapTo(User.class).findOne());
     }
 
-    public static User addUser(String name, String email, String passwordHash) {
-        long id = DB.withHandle(handle -> handle.createUpdate("insert into users (name, email, password_hash) values (:name, :email, :hash)")
-                .bind("name", name)
-                .bind("email", email)
-                .bind("hash", passwordHash)
-                .executeAndReturnGeneratedKeys("id")
-                .mapTo(Long.class)
-                .one());
-        return new User(id, name, email, passwordHash);
+    // Empty when the email is already taken; the unique constraint also covers two sign-ups racing each other.
+    public static Optional<User> addUser(String name, String email, String passwordHash) {
+        try {
+            long id = DB.withHandle(handle -> handle.createUpdate("insert into users (name, email, password_hash) values (:name, :email, :hash)")
+                    .bind("name", name)
+                    .bind("email", email)
+                    .bind("hash", passwordHash)
+                    .executeAndReturnGeneratedKeys("id")
+                    .mapTo(Long.class)
+                    .one());
+            return Optional.of(new User(id, name, email, passwordHash));
+        } catch (UnableToExecuteStatementException failure) {
+            if (failure.getCause() instanceof SQLIntegrityConstraintViolationException) return Optional.empty();
+            throw failure;
+        }
     }
 
     public static List<Task> tasks(long owner) {
-        return DB.withHandle(handle -> handle.createQuery("select id, title, notes, due, priority, done from tasks where owner_id = :owner order by id")
+        return DB.withHandle(handle -> handle.createQuery(SELECT_TASK + " where owner_id = :owner order by id")
                 .bind(OWNER, owner)
                 .mapTo(Task.class)
                 .list());
     }
 
     public static Optional<Task> task(long owner, long id) {
-        return DB.withHandle(handle -> handle.createQuery("select id, title, notes, due, priority, done from tasks where id = :id and owner_id = :owner")
+        return DB.withHandle(handle -> handle.createQuery(SELECT_TASK + " where id = :id and owner_id = :owner")
                 .bind("id", id)
                 .bind(OWNER, owner)
                 .mapTo(Task.class)

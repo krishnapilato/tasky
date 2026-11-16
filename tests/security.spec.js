@@ -100,6 +100,13 @@ test('server rejects forged requests, malformed inputs and manipulated URLs', as
     for (const id of ['-1', '99999999999999999999999999999', '1%27%20OR%201=1']) {
         expect((await request.delete(`api/tasks/${id}`, {headers})).status()).toBe(404);
     }
+    const twin = {...account, email: `${crypto.randomUUID()}@tasky.test`};
+    const signUps = await Promise.all([1, 2].map(() => request.post('api/account/register', {headers, data: twin})));
+    expect(signUps.map(response => response.status()).sort()).toEqual([200, 409]);
+    const rome = new Date(new Date().toLocaleDateString('sv-SE', {timeZone: 'Europe/Rome'}));
+    const romeYesterday = new Date(rome.getTime() - 86_400_000).toISOString().slice(0, 10);
+    expect((await request.post('api/tasks', {headers, data: {title: 'Rome today', due: rome.toISOString().slice(0, 10)}})).status()).toBe(201);
+    expect((await request.post('api/tasks', {headers, data: {title: 'Rome yesterday', due: romeYesterday}})).status()).toBe(422);
 });
 
 for (const timezoneId of ['Pacific/Kiritimati', 'America/Adak']) {

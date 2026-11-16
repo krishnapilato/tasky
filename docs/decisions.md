@@ -50,7 +50,7 @@ The project uses a current Java version, but only stable features, so it needs n
 - **Sign-in attempts** are blocked for ten minutes after eight failures on the same email.
 - **Sessions** use a `SameSite=Strict` cookie, and the session id changes at sign-in.
 - **Request bodies** are limited to 16 KB. Unknown JSON fields, trailing content and scalar type coercions are rejected. Mutations require a custom header and reject foreign origins; POST/PUT require JSON. API responses are not cached.
-- **Date validation** uses the browser IANA time zone supplied in a header, with UTC as the default for API clients. Existing overdue tasks can retain their date.
+- **Date validation** uses the browser IANA time zone supplied in a header, with `Europe/Rome` as the default for API clients and the demo seed. Existing overdue tasks can retain their date.
 - **Sessions** expire after 30 minutes without activity.
 - **UI restrictions** disable right-click and selection outside editable fields. They do not protect the API.
 - **The Content Security Policy** enforces Trusted Types, so the browser refuses HTML inserted from strings. It is a meta tag because GitHub Pages cannot set headers. Its hash must be recomputed whenever the import map changes.

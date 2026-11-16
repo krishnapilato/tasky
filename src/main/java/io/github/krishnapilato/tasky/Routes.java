@@ -5,8 +5,17 @@ import com.password4j.Password;
 import io.github.krishnapilato.tasky.model.Task;
 import io.github.krishnapilato.tasky.model.User;
 import io.javalin.config.JavalinConfig;
+import io.javalin.http.BadRequestResponse;
+import io.javalin.http.ConflictResponse;
 import io.javalin.http.Context;
+import io.javalin.http.ForbiddenResponse;
 import io.javalin.http.HttpResponseException;
+import io.javalin.http.HttpStatus;
+import io.javalin.http.NotFoundResponse;
+import io.javalin.http.TooManyRequestsResponse;
+import io.javalin.http.UnauthorizedResponse;
+import io.javalin.http.UnprocessableContentResponse;
+import io.javalin.http.UnsupportedMediaTypeResponse;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson3;
 import jakarta.servlet.http.HttpSession;
@@ -38,15 +47,24 @@ public final class Routes {
             })
             .build();
 
+    static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Rome");
+
     private static final Logger LOG = LoggerFactory.getLogger(Routes.class);
     private static final String USER_ID = "userId";
     private static final String MESSAGE = "message";
     private static final String UNREADABLE = "The request could not be read";
+    private static final String NOT_ALLOWED = "Request not allowed";
+    private static final String WRONG_LOGIN = "Email or password is incorrect.";
+    private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
+    private static final Set<String> BODY_METHODS = Set.of("POST", "PUT");
+    private static final Set<String> SAME_SITE = Set.of("same-origin", "none");
     private static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s.]++(?:\\.[^@\\s.]++)++");
     private static final Pattern TASK_ID = Pattern.compile("\\d{1,18}");
     private static final int MAX_FAILED_LOGINS = 8;
     private static final Duration LOGIN_WINDOW = Duration.ofMinutes(10);
     private static final Map<String, List<Instant>> FAILED_LOGINS = new ConcurrentHashMap<>();
+    // Checked when the email is unknown, so the response time does not reveal which accounts exist.
+    private static final String UNKNOWN_USER_HASH = hash(UUID.randomUUID().toString());
 
     public record Form(String name, String email, String password) { }
 
@@ -73,10 +91,10 @@ public final class Routes {
 
         config.routes.before(Routes::secure);
         config.routes.exception(HttpResponseException.class, (failure, ctx) -> ctx.status(failure.getStatus()).json(Map.of(MESSAGE, failure.getMessage())));
-        config.routes.exception(JacksonException.class, (_, ctx) -> ctx.status(400).json(Map.of(MESSAGE, UNREADABLE)));
+        config.routes.exception(JacksonException.class, (_, ctx) -> ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(MESSAGE, UNREADABLE)));
         config.routes.exception(Exception.class, (failure, ctx) -> {
             LOG.error("{} {} failed", ctx.method(), ctx.path(), failure);
-            ctx.status(500).json(Map.of(MESSAGE, "Something went wrong on the server"));
+            ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of(MESSAGE, "Something went wrong on the server"));
         });
 
         config.routes.get("/api/account", ctx -> ctx.json(new Account(false, signedIn(ctx).flatMap(Store::user).map(User::view).orElse(null))));
@@ -84,9 +102,13 @@ public final class Routes {
         config.routes.post("/api/account/login", ctx -> signIn(ctx, login(body(ctx, Form.class))));
         config.routes.post("/api/account/logout", Routes::signOut);
         config.routes.get("/api/tasks", ctx -> ctx.json(Store.tasks(userId(ctx))));
-        config.routes.post("/api/tasks", ctx -> ctx.status(201).json(Store.addTask(userId(ctx), checked(body(ctx, Task.class), null, today(ctx)))));
+        config.routes.post("/api/tasks", ctx -> ctx.status(HttpStatus.CREATED).json(Store.addTask(userId(ctx), checked(body(ctx, Task.class), null, today(ctx)))));
         config.routes.put("/api/tasks/{id}", Routes::update);
         config.routes.delete("/api/tasks/{id}", Routes::delete);
+    }
+
+    static String hash(String password) {
+        return Password.hash(password).addRandomSalt().withArgon2().getResult();
     }
 
     private static void secure(Context ctx) {
@@ -96,51 +118,50 @@ public final class Routes {
         ctx.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         if (!ctx.path().startsWith("/api/")) return;
         ctx.header("Cache-Control", "no-store");
-        if (Set.of("GET", "HEAD", "OPTIONS").contains(ctx.method().name())) return;
-        if (!"1".equals(ctx.header("X-Tasky-Request"))) throw new HttpResponseException(403, "Request not allowed");
+        var method = ctx.method().name();
+        if (SAFE_METHODS.contains(method)) return;
+        if (!"1".equals(ctx.header("X-Tasky-Request"))) throw new ForbiddenResponse(NOT_ALLOWED);
         var origin = ctx.header("Origin");
-        if (origin != null && !origin.equals(ctx.scheme() + "://" + ctx.host())) throw new HttpResponseException(403, "Request not allowed");
+        if (origin != null && !origin.equals(ctx.scheme() + "://" + ctx.host())) throw new ForbiddenResponse(NOT_ALLOWED);
         var site = ctx.header("Sec-Fetch-Site");
-        if (site != null && !Set.of("same-origin", "none").contains(site)) throw new HttpResponseException(403, "Request not allowed");
-        if (Set.of("POST", "PUT").contains(ctx.method().name()) && !"application/json".equalsIgnoreCase(Optional.ofNullable(ctx.contentType()).orElse("").split(";", 2)[0].strip())) {
-            throw new HttpResponseException(415, "Send requests as application/json");
-        }
+        if (site != null && !SAME_SITE.contains(site)) throw new ForbiddenResponse(NOT_ALLOWED);
+        var type = Optional.ofNullable(ctx.contentType()).orElse("").split(";", 2)[0].strip();
+        if (BODY_METHODS.contains(method) && !"application/json".equalsIgnoreCase(type)) throw new UnsupportedMediaTypeResponse("Send requests as application/json");
     }
 
     private static <T> T body(Context ctx, Class<T> type) {
-        return Optional.ofNullable(JSON.readValue(ctx.body(), type)).orElseThrow(() -> new HttpResponseException(400, UNREADABLE));
+        return Optional.ofNullable(JSON.readValue(ctx.body(), type)).orElseThrow(() -> new BadRequestResponse(UNREADABLE));
     }
 
     private static User register(Form form) {
         var name = text(form.name());
         var email = text(form.email()).toLowerCase(Locale.ROOT);
+        var password = Objects.requireNonNullElse(form.password(), "");
 
-        if (name.isEmpty() || name.length() > 80) throw new HttpResponseException(422, "Enter your name.");
-        if (email.length() > 254 || !EMAIL.matcher(email).matches()) throw new HttpResponseException(422, "Enter a valid email address.");
-        if (text(form.password()).length() < 8) throw new HttpResponseException(422, "Use at least 8 characters for the password.");
-        if (form.password().length() > 1024) throw new HttpResponseException(422, "Keep the password under 1024 characters.");
-        if (Store.userByEmail(email).isPresent()) throw new HttpResponseException(409, "An account with this email already exists.");
+        if (name.isEmpty() || name.length() > 80) throw new UnprocessableContentResponse("Enter your name.");
+        if (email.length() > 254 || !EMAIL.matcher(email).matches()) throw new UnprocessableContentResponse("Enter a valid email address.");
+        // Surrounding spaces do not count toward the minimum, but the password is stored exactly as typed.
+        if (password.strip().length() < 8) throw new UnprocessableContentResponse("Use at least 8 characters for the password.");
+        if (password.length() > 1024) throw new UnprocessableContentResponse("Keep the password under 1024 characters.");
 
-        return Store.addUser(name, email, Password.hash(form.password()).addRandomSalt().withArgon2().getResult());
+        return Store.addUser(name, email, hash(password)).orElseThrow(() -> new ConflictResponse("An account with this email already exists."));
     }
 
     private static User login(Form form) {
         var email = text(form.email()).toLowerCase(Locale.ROOT);
-        if (email.length() > 254 || !EMAIL.matcher(email).matches() || form.password() == null || form.password().length() > 1024) throw new HttpResponseException(401, "Email or password is incorrect.");
+        var password = form.password();
+        if (email.length() > 254 || !EMAIL.matcher(email).matches() || password == null || password.length() > 1024) throw new UnauthorizedResponse(WRONG_LOGIN);
+
         var since = Instant.now().minus(LOGIN_WINDOW);
         FAILED_LOGINS.entrySet().removeIf(entry -> entry.getValue().stream().noneMatch(since::isBefore));
-        var authenticated = new AtomicReference<User>();
-        FAILED_LOGINS.compute(email, (_, attempts) -> {
-            var failures = Optional.ofNullable(attempts).orElse(List.of()).stream().filter(since::isBefore).toList();
-            if (failures.size() >= MAX_FAILED_LOGINS) throw new HttpResponseException(429, "Too many attempts. Try again in a few minutes");
-            var user = Store.userByEmail(email).filter(found -> form.password() != null && Password.check(form.password(), found.passwordHash()).withArgon2());
-            if (user.isPresent()) {
-                authenticated.set(user.get());
-                return null;
-            }
-            return Stream.concat(failures.stream(), Stream.of(Instant.now())).toList();
-        });
-        return Optional.ofNullable(authenticated.get()).orElseThrow(() -> new HttpResponseException(401, "Email or password is incorrect."));
+        if (FAILED_LOGINS.getOrDefault(email, List.of()).stream().filter(since::isBefore).count() >= MAX_FAILED_LOGINS) throw new TooManyRequestsResponse("Too many attempts. Try again in a few minutes");
+
+        var user = Store.userByEmail(email);
+        var valid = Password.check(password, user.map(User::passwordHash).orElse(UNKNOWN_USER_HASH)).withArgon2();
+        var match = user.filter(_ -> valid);
+        if (match.isPresent()) FAILED_LOGINS.remove(email);
+        else FAILED_LOGINS.merge(email, List.of(Instant.now()), (old, added) -> Stream.concat(old.stream().filter(since::isBefore), added.stream()).toList());
+        return match.orElseThrow(() -> new UnauthorizedResponse(WRONG_LOGIN));
     }
 
     private static void signIn(Context ctx, User user) {
@@ -153,7 +174,7 @@ public final class Routes {
 
     private static void signOut(Context ctx) {
         Optional.ofNullable(ctx.req().getSession(false)).ifPresent(HttpSession::invalidate);
-        ctx.status(204);
+        ctx.status(HttpStatus.NO_CONTENT);
     }
 
     private static void update(Context ctx) {
@@ -165,7 +186,7 @@ public final class Routes {
 
     private static void delete(Context ctx) {
         if (!Store.deleteTask(userId(ctx), taskId(ctx))) throw missing();
-        ctx.status(204);
+        ctx.status(HttpStatus.NO_CONTENT);
     }
 
     private static Optional<Long> signedIn(Context ctx) {
@@ -173,7 +194,7 @@ public final class Routes {
     }
 
     private static long userId(Context ctx) {
-        return signedIn(ctx).orElseThrow(() -> new HttpResponseException(401, "Sign in to continue"));
+        return signedIn(ctx).orElseThrow(() -> new UnauthorizedResponse("Sign in to continue"));
     }
 
     private static long taskId(Context ctx) {
@@ -183,11 +204,11 @@ public final class Routes {
     }
 
     private static Task checked(Task task, LocalDate currentDue, LocalDate today) {
-        if (task.due() != null && (task.due().getYear() < 1 || task.due().getYear() > 9999)) throw new HttpResponseException(400, UNREADABLE);
-        if (task.title().isEmpty()) throw new HttpResponseException(422, "Give the task a title.");
-        if (task.title().length() > 50) throw new HttpResponseException(422, "Keep the title under 50 characters.");
-        if (task.notes().length() > 150) throw new HttpResponseException(422, "Keep the notes under 150 characters.");
-        if (task.due() != null && !task.due().equals(currentDue) && task.due().isBefore(today)) throw new HttpResponseException(422, "Pick today or a later date.");
+        if (task.due() != null && (task.due().getYear() < 1 || task.due().getYear() > 9999)) throw new BadRequestResponse(UNREADABLE);
+        if (task.title().isEmpty()) throw new UnprocessableContentResponse("Give the task a title.");
+        if (task.title().length() > 50) throw new UnprocessableContentResponse("Keep the title under 50 characters.");
+        if (task.notes().length() > 150) throw new UnprocessableContentResponse("Keep the notes under 150 characters.");
+        if (task.due() != null && !task.due().equals(currentDue) && task.due().isBefore(today)) throw new UnprocessableContentResponse("Pick today or a later date.");
 
         return task;
     }
@@ -195,15 +216,14 @@ public final class Routes {
     // Date inputs represent a calendar day in the browser's time zone.
     private static LocalDate today(Context ctx) {
         try {
-            var zone = Optional.ofNullable(ctx.header("X-Time-Zone")).map(ZoneId::of).orElse(ZoneOffset.UTC);
-            return LocalDate.now(zone);
+            return LocalDate.now(Optional.ofNullable(ctx.header("X-Time-Zone")).map(ZoneId::of).orElse(DEFAULT_ZONE));
         } catch (DateTimeException _) {
-            throw new HttpResponseException(400, UNREADABLE);
+            throw new BadRequestResponse(UNREADABLE);
         }
     }
 
-    private static HttpResponseException missing() {
-        return new HttpResponseException(404, "Task not found");
+    private static NotFoundResponse missing() {
+        return new NotFoundResponse("Task not found");
     }
 
     private static String text(String value) {

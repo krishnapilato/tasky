@@ -1,7 +1,6 @@
 package io.github.krishnapilato.tasky;
 
 import module java.base;
-import com.password4j.Password;
 import io.github.krishnapilato.tasky.model.Priority;
 import io.github.krishnapilato.tasky.model.Task;
 import org.slf4j.LoggerFactory;
@@ -19,11 +18,11 @@ public record Seed(Account account, List<Entry> tasks) {
     public static void load() throws IOException {
         try (var file = Objects.requireNonNull(Seed.class.getResourceAsStream("/web/data/seed.json"), "seed.json file is missing.")) {
             var seed = Routes.JSON.readValue(file, Seed.class);
-            var today = LocalDate.now(ZoneId.of("Europe/Rome"));
-            var user = Store.addUser(seed.account.name(), seed.account.email(), Password.hash(seed.account.password()).addRandomSalt().withArgon2().getResult());
+            var today = LocalDate.now(Routes.DEFAULT_ZONE);
+            var user = Store.addUser(seed.account().name(), seed.account().email(), Routes.hash(seed.account().password())).orElseThrow();
 
-            seed.tasks.forEach(entry -> Store.addTask(user.id(), entry.on(today)));
-            LoggerFactory.getLogger(Seed.class).info("Loaded the demo account {} with {} tasks", user.email(), seed.tasks.size());
+            seed.tasks().forEach(entry -> Store.addTask(user.id(), entry.on(today)));
+            LoggerFactory.getLogger(Seed.class).info("Loaded the demo account {} with {} tasks", user.email(), seed.tasks().size());
         }
     }
 }
